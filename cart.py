@@ -70,8 +70,8 @@ def insertData():
     keys = ['bill', 'dan', 'shri']
 
     data=[
-        {"item1":{'description':'fitband', 'quantity':1, 'price':4.5}},
-        {"item2":{'description':'redpants', 'quantity':1, 'price':400}},
+        {"749374692hs":{'name':'fitband','description':'fitband for any age - even babies', 'quantity':1, 'price':4.5}},
+        {"384797987238":{'name':'redpant','description':'the most awesome redpants in the world', 'quantity':1, 'price':400}},
         ]
 
     payload=json.dumps(data)
@@ -91,12 +91,20 @@ def getitems(userid):
 
     return unpacked_data
 
+#convert string to number
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
 #http call to gets all Items from a cart (userid)
 #If successful this returns the cart and items, if not successfull (the user id is non-existant) - 204 returned
 
 #@statsd.timer('getCartItems')
-@app.route('/getcartitems/<userid>', methods=['GET'])
-def getcartitems(userid):
+@app.route('/cart/items/<userid>', methods=['GET'])
+def getCartItems(userid):
 
     app.logger.info('getting all items on cart')
     PPTable = getitems(userid)
@@ -110,8 +118,8 @@ def getcartitems(userid):
 
 #http call to get all carts and their values
 #@statsd.timer('getAllCarts')
-@app.route('/getallcarts', methods=['GET'])
-def getallcarts():
+@app.route('/cart/all', methods=['GET'])
+def getAllCarts():
     app.logger.info('getting carts')
 
     carts=[]
@@ -130,9 +138,10 @@ def getallcarts():
 #example curl call to test: curl --header "Content-Type: application/json" --request POST --data '{"mytext":"xyz", "idname":"1234"}' http://34.215.155.50:5000/additem/bill
 #If add is positive returns the userid
 #@statsd.timer('addItem')
-@app.route('/additem/<userid>', methods=['GET', 'POST'])
-def add_message(userid):
+@app.route('/cart/item/<userid>', methods=['GET', 'POST'])
+def addItem(userid):
     content = request.json
+
     app.logger.info('inserting cart for %s with following contents %s',userid, json.dumps(content))
 
     jsonobj=getitems(userid)
@@ -153,15 +162,44 @@ def add_message(userid):
 
     return jsonify({"userid":userid})
 
+#placeholder for clear cart
+@app.route('/cart/clear/<userid>')
+def clearCart(userid):
+    #placeholder
+    return render_template('hello.html')
+
 #placeholder for call to order
 @app.route('/order/userid')
 def order(userid):
     return render_template('hello.html')
 
 #placeholder for get total amount in users cart
-@app.route('/carttotal/userid')
-def carttotal(userid):
-    return render_template('hello.html')
+@app.route('/cart/total/<userid>')
+def cartTotal(userid):
+
+    app.logger.info('getting total for %s cart',userid)
+
+    jsonobj=getitems(userid)
+
+    keylist=[]
+    for item in jsonobj:
+        keylist.append(list(item.keys())[0])
+
+    keyindex=0
+    total=0
+
+    while keyindex < len(jsonobj):
+        quantity=jsonobj[keyindex][keylist[keyindex]]['quantity']
+        price=jsonobj[keyindex][keylist[keyindex]]['price']
+        if is_number(quantity) and is_number(price):
+            total=total+(float(quantity)*float(price))
+        else:
+            total=total+0
+        keyindex += 1
+
+    app.logger.info('The total calculated is', total)
+
+    return str(total)
 
 #baseline route to check is server is live ;-)
 @app.route('/')
