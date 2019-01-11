@@ -163,7 +163,7 @@ def addItem(userid):
     return jsonify({"userid":userid})
 
 #placeholder for clear cart
-@app.route('/cart/clear/<userid>')
+@app.route('/cart/clear/<userid>', methods=['GET', 'POST'])
 def clearCart(userid):
     #placeholder
     return render_template('hello.html')
@@ -174,7 +174,7 @@ def order(userid):
     return render_template('hello.html')
 
 #placeholder for get total amount in users cart
-@app.route('/cart/total/<userid>')
+@app.route('/cart/total/<userid>', methods=['GET', 'POST'])
 def cartTotal(userid):
 
     app.logger.info('getting total for %s cart',userid)

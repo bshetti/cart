@@ -24,3 +24,20 @@ docker build -t miniapi .
 Ensure redis is installed and running locally on port 6379
 
 docker run -p 5000:5000 miniapi
+
+#api is as follows:
+
+Get the list of items for a user's cart
+/cart/items/<userid>, methods=['GET']
+
+Get all the carts for the shop that are in progress
+/cart/all, methods=['GET']
+
+Insert an item(s) or create a cart with a specific item(s) for a user
+/cart/item/<userid>, methods=['GET', 'POST']
+
+Clear cart
+/cart/clear/<userid>, methods=['GET', 'POST']
+
+Get total from the cart
+/cart/total/<userid>, methods=['GET', 'POST']
