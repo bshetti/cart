@@ -109,7 +109,7 @@ def getCartItems(userid):
     app.logger.info('getting all items on cart')
     PPTable = getitems(userid)
     if PPTable:
-        packed_data=jsonify({userid+'-cart': PPTable})
+        packed_data=jsonify({userid: PPTable})
     else:
         app.logger.info('no items in cart found for %s', userid)
         return ('',204)
@@ -142,21 +142,25 @@ def getAllCarts():
 def addItem(userid):
     content = request.json
 
-    app.logger.info('inserting cart for %s with following contents %s',userid, json.dumps(content))
+    app.logger.info('the content is %s', content)
+
 
     jsonobj=getitems(userid)
     if (jsonobj):
         jsonobj.append(content)
         payload=json.dumps(jsonobj)
         try:
+            app.logger.info('inserting cart for %s with following contents %s',userid, json.dumps(content))
             rConn.set(userid, payload)
         except Exception as e:
             app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
 
     else:
-        payload=json.dumps(content)
+        payload=[]
+        payload.append(content)
+        app.logger.info("added to payload for new insert %s", json.dumps(payload))
         try:
-            rConn.set(userid, payload)
+            rConn.set(userid, json.dumps(payload))
         except Exception as e:
             app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
 
@@ -165,8 +169,15 @@ def addItem(userid):
 #placeholder for clear cart
 @app.route('/cart/clear/<userid>', methods=['GET', 'POST'])
 def clearCart(userid):
-    #placeholder
-    return render_template('hello.html')
+
+    try:
+        app.logger.info("clearing cart for %s", userid)
+        rConn.delete(userid)
+    except Exception as e:
+        app.logger.error('Could not delete %s cart due to %s', userid, e)
+        return('',500)
+
+    return ('',200)
 
 #placeholder for call to order
 @app.route('/order/userid')
@@ -197,9 +208,11 @@ def cartTotal(userid):
             total=total+0
         keyindex += 1
 
-    app.logger.info('The total calculated is', total)
+    app.logger.info("The total calculated is %s", str(total))
 
-    return str(total)
+    totaljson={"userid":userid, "carttotal":total}
+
+    return jsonify(totaljson)
 
 #baseline route to check is server is live ;-)
 @app.route('/')
