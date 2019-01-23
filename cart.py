@@ -70,8 +70,8 @@ def insertData():
     keys = ['bill', 'dan', 'shri']
 
     data=[
-        {"749374692hs":{'name':'fitband','description':'fitband for any age - even babies', 'quantity':1, 'price':4.5}},
-        {"384797987238":{'name':'redpant','description':'the most awesome redpants in the world', 'quantity':1, 'price':400}},
+        {'itemid':'sdfsdfsfs', 'name':'fitband','description':'fitband for any age - even babies', 'quantity':1, 'price':4.5},
+        {'itemid':'sfsdsda3343','name':'redpant','description':'the most awesome redpants in the world', 'quantity':1, 'price':400},
         ]
 
     payload=json.dumps(data)
@@ -200,8 +200,10 @@ def cartTotal(userid):
     total=0
 
     while keyindex < len(jsonobj):
-        quantity=jsonobj[keyindex][keylist[keyindex]]['quantity']
-        price=jsonobj[keyindex][keylist[keyindex]]['price']
+        quantity=jsonobj[keyindex]['quantity']
+        price=jsonobj[keyindex]['price']
+#        quantity=jsonobj[keyindex][keylist[keyindex]]['quantity']
+#        price=jsonobj[keyindex][keylist[keyindex]]['price']
         if is_number(quantity) and is_number(price):
             total=total+(float(quantity)*float(price))
         else:
