@@ -59,6 +59,27 @@ except Exception as ex:
     app.logger.error('Error for redis connection %s', ex)
     exit('Failed to connect, terminating')
 
+#errorhandler for specific responses
+class FoundIssue(Exception):
+    status_code = 400
+
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
+
+@app.errorhandler(FoundIssue)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
 
 #initialization of redis with fake data from the San Francisco legal offices of Shri, Dan and Bill SDB.
 def insertData():
@@ -112,7 +133,10 @@ def getCartItems(userid):
         packed_data=jsonify({userid: PPTable})
     else:
         app.logger.info('no items in cart found for %s', userid)
-        return ('',204)
+        output_message="no cart found for "+userid
+
+        raise FoundIssue(str(output_message), status_code=204)
+#        return ({'message':str(output_message)},204)
 
     return packed_data
 
