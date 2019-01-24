@@ -140,6 +140,36 @@ def getCartItems(userid):
 
     return packed_data
 
+#gets total items in users cart
+@app.route('/cart/items/total/<userid>', methods=['GET', 'POST'])
+def cartItemsTotal(userid):
+
+    app.logger.info('getting total for %s cart',userid)
+
+    jsonobj=getitems(userid)
+
+    keylist=[]
+    for item in jsonobj:
+        keylist.append(list(item.keys())[0])
+
+    keyindex=0
+    total=0
+
+    while keyindex < len(jsonobj):
+        quantity=jsonobj[keyindex]['quantity']
+        if is_number(quantity):
+            total=total+float(quantity)
+        else:
+            total=total+0
+        keyindex += 1
+
+    app.logger.info("The total number of items is %s", str(total))
+
+    totaljson={"userid":userid, "cartitemtotal":total}
+
+    return jsonify(totaljson)
+
+
 #http call to get all carts and their values
 #@statsd.timer('getAllCarts')
 @app.route('/cart/all', methods=['GET'])
@@ -162,11 +192,11 @@ def getAllCarts():
 #example curl call to test: curl --header "Content-Type: application/json" --request POST --data '{"mytext":"xyz", "idname":"1234"}' http://34.215.155.50:5000/additem/bill
 #If add is positive returns the userid
 #@statsd.timer('addItem')
-@app.route('/cart/item/<userid>', methods=['GET', 'POST'])
+@app.route('/cart/item/add/<userid>', methods=['GET', 'POST'])
 def addItem(userid):
     content = request.json
 
-    app.logger.info('the content is %s', content)
+    app.logger.info('the content to add is %s', content)
 
 
     jsonobj=getitems(userid)
@@ -190,7 +220,48 @@ def addItem(userid):
 
     return jsonify({"userid":userid})
 
-#placeholder for clear cart
+#clear item from cart
+#minimum content must be {"itemid":"shjhjssr", "quantity":"x"}
+@app.route('/cart/item/delete/<userid>', methods=['GET', 'POST'])
+def deleteItem(userid):
+    content = request.json
+
+    app.logger.info('the item to delete is %s', content)
+
+
+    jsonobj=getitems(userid)
+    if (jsonobj):
+        keyindex = 0
+        while keyindex < len(jsonobj):
+            if (jsonobj[keyindex]['itemid'] == content['itemid']) and (content['quantity']==0):
+                del jsonobj[keyindex]
+                payload=json.dumps(jsonobj)
+                try:
+                    app.logger.info('removing item for %s with following contents %s',userid, json.dumps(content))
+                    rConn.set(userid, payload)
+                except Exception as e:
+                    app.logger.error('Could not remove data %s into redis, error is %s', json.dumps(content), e)
+                keyindex=len(jsonobj)
+            elif (jsonobj[keyindex]['itemid'] == content['itemid']):
+                jsonobj[keyindex]['quantity']=content['quantity']
+                payload=json.dumps(jsonobj)
+                try:
+                    app.logger.info('modifying cart for %s with following contents %s',userid, json.dumps(content))
+                    rConn.set(userid, payload)
+                except Exception as e:
+                    app.logger.error('Could not modify cart %s into redis, error is %s', json.dumps(content), e)
+                keyindex=len(jsonobj)
+            else:
+                keyindex += 1
+    else:
+        app.logger.info('no items in cart found for %s', userid)
+        output_message="no cart found for "+userid
+        raise FoundIssue(str(output_message), status_code=204)
+
+    return jsonify({"userid":userid})
+
+
+#clear cart
 @app.route('/cart/clear/<userid>', methods=['GET', 'POST'])
 def clearCart(userid):
 
@@ -199,7 +270,8 @@ def clearCart(userid):
         rConn.delete(userid)
     except Exception as e:
         app.logger.error('Could not delete %s cart due to %s', userid, e)
-        return('',500)
+        raise FoundIssue(str(e), status_code=500)
+#        return('',500)
 
     return ('',200)
 
@@ -208,7 +280,7 @@ def clearCart(userid):
 def order(userid):
     return render_template('hello.html')
 
-#placeholder for get total amount in users cart
+#get total amount in users cart
 @app.route('/cart/total/<userid>', methods=['GET', 'POST'])
 def cartTotal(userid):
 
@@ -239,6 +311,8 @@ def cartTotal(userid):
     totaljson={"userid":userid, "carttotal":total}
 
     return jsonify(totaljson)
+
+
 
 #baseline route to check is server is live ;-)
 @app.route('/')
