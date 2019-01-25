@@ -130,7 +130,7 @@ def getCartItems(userid):
     app.logger.info('getting all items on cart')
     PPTable = getitems(userid)
     if PPTable:
-        packed_data=jsonify({userid: PPTable})
+        packed_data=jsonify({"userid":userid, "cart":PPTable})
     else:
         app.logger.info('no items in cart found for %s', userid)
         output_message="no cart found for "+userid
@@ -200,15 +200,30 @@ def addItem(userid):
 
 
     jsonobj=getitems(userid)
-    if (jsonobj):
-        jsonobj.append(content)
-        payload=json.dumps(jsonobj)
-        try:
-            app.logger.info('inserting cart for %s with following contents %s',userid, json.dumps(content))
-            rConn.set(userid, payload)
-        except Exception as e:
-            app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
 
+    if (jsonobj):
+        keyindex = 0
+        while keyindex < len(jsonobj):
+            if (jsonobj[keyindex]['itemid'] == content['itemid']):
+                jsonobj[keyindex]['quantity'] = int(jsonobj[keyindex]['quantity']) + int(content['quantity'])
+                keyindex=len(jsonobj)+1
+                payload=json.dumps(jsonobj)
+                try:
+                    app.logger.info('inserting cart for %s with following contents %s',userid, json.dumps(content))
+                    rConn.set(userid, payload)
+                except Exception as e:
+                    app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
+            else:
+                keyindex += 1
+
+        if keyindex <= len(jsonobj):
+            jsonobj.append(content)
+            payload=json.dumps(jsonobj)
+            try:
+                app.logger.info('inserting cart for %s with following contents %s',userid, json.dumps(content))
+                rConn.set(userid, payload)
+            except Exception as e:
+                app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
     else:
         payload=[]
         payload.append(content)
@@ -220,9 +235,54 @@ def addItem(userid):
 
     return jsonify({"userid":userid})
 
+#Call to modify entire cart
+#
+#Must be in following format
+#    "cart": [
+#        {
+#            "description": "red is awesome",
+#            "itemid": "250",
+#            "name": "redpants",
+#            "price": 100,
+#            "quantity": 22
+#        },
+#        {
+#            "description": "blue is better than red",
+#            "itemid": "7943xxx3659",
+#            "name": "bluepants",
+#            "price": 10,
+#            "quantity": 12
+#        }
+#    ]
+#}
+#########
+
+
+@app.route('/cart/modify/<userid>', methods=['GET', 'POST'])
+def replaceCart(userid):
+    content = request.json
+
+    app.logger.info('the content to modify is %s', content)
+
+
+    jsonobj=getitems(userid)
+
+    payload=[]
+    for item in content['cart']:
+        payload.append(item)
+
+    app.logger.info("added to payload for new insert %s", json.dumps(payload))
+    try:
+        rConn.set(userid, json.dumps(payload))
+    except Exception as e:
+        app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
+
+    return jsonify({"userid":userid})
+
+
 #clear item from cart
 #minimum content must be {"itemid":"shjhjssr", "quantity":"x"}
-@app.route('/cart/item/delete/<userid>', methods=['GET', 'POST'])
+@app.route('/cart/item/modify/<userid>', methods=['GET', 'POST'])
 def deleteItem(userid):
     content = request.json
 
