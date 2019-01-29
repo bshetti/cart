@@ -3,15 +3,26 @@ MAINTAINER Bill Shetti "billshetti@gmail.com"
 WORKDIR /app
 ADD . /app
 
+ENV REDIS_HOST="localhost"
+ENV REDIS_PORT="6379"
+ENV REDIS_PASSWORD=""
+
+
 RUN apk update && \
     apk add python3 && \
     apk add python3-dev && \
-    pip3 install --no-cache-dir --upgrade pip \
     apk add py-pip && \
-    apk add py-sqlalchemy && \
+    python3 -m ensurepip && \
+    rm -r /usr/lib/python*/ensurepip && \
+    pip3 install --upgrade pip setuptools && \
+    if [ ! -e /usr/bin/pip ]; then ln -s pip3 /usr/bin/pip ; fi && \
+    if [[ ! -e /usr/bin/python ]]; then ln -sf /usr/bin/python3 /usr/bin/python; fi && \
+#    pip install --upgrade pip \
+#    pip3 install setuptools \
     apk add py-flask && \
     apk add py-redis && \
     apk add py-requests && \
+    apk add redis && \
     rm -rf /var/cache/* \
     rm -rf /root/.cache/*
 

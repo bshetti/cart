@@ -45,13 +45,41 @@ from flask import Flask, render_template, jsonify, flash, request
 app = Flask(__name__)
 app.debug=True
 
+# set variables with env variables
+from os import environ
+
+if environ.get('REDIS_HOST') is not None:
+    if os.environ['REDIS_HOST'] != "":
+        redishost=os.environ['REDIS_HOST']
+    else:
+        redishost='localhost'
+else:
+    redishost='localhost'
+
+if environ.get('REDIS_PORT') is not None:
+    if os.environ['REDIS_PORT'] != "":
+        redisport=os.environ['REDIS_PORT']
+    else:
+        redisport=6379
+else:
+    redisport=6379
+
+if environ.get('REDIS_PASSWORD') is not None:
+    if os.environ['REDIS_PASSWORD'] != "":
+        redispassword=os.environ['REDIS_PASSWORD']
+    else:
+        redispassword=''
+else:
+    redispassword=''
+
+
 #initializing redis connections on localhost and port 6379
 #If error terminates process- entire cart is shut down
 
 import redis
 
 try:
-    rConn=redis.StrictRedis(host='localhost', port=6379, password='', db=0)
+    rConn=redis.StrictRedis(host=redishost, port=redisport, password=redispassword, db=0)
     app.logger.info('initiated redis connection %s', rConn)
     rConn.ping()
     app.logger.info('Connected to redis')

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-until redis-cli ping | grep -q 'PONG'; do
+until /usr/bin/redis-cli -h cartredis ping | grep -q 'PONG'; do
   >&2 echo "redis is unavailable - sleeping" then
   sleep 1
 done
