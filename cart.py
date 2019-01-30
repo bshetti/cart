@@ -68,10 +68,17 @@ if environ.get('REDIS_PASSWORD') is not None:
     if os.environ['REDIS_PASSWORD'] != "":
         redispassword=os.environ['REDIS_PASSWORD']
     else:
-        redispassword=''
+        redispassword= None
 else:
-    redispassword=''
+    redispassword= None
 
+if environ.get('CART_PORT') is not None:
+    if os.environ['CART_PORT'] != "":
+        cartport=os.environ['CART_PORT']
+    else:
+        cartport= None
+else:
+    cartport= None
 
 #initializing redis connections on localhost and port 6379
 #If error terminates process- entire cart is shut down
@@ -79,7 +86,10 @@ else:
 import redis
 
 try:
-    rConn=redis.StrictRedis(host=redishost, port=redisport, password=redispassword, db=0)
+    if redispassword is not None:
+        rConn=redis.StrictRedis(host=redishost, port=redisport, password=redispassword, db=0)
+    else:
+        rConn=redis.StrictRedis(host=redishost, port=redisport, password=None, db=0)
     app.logger.info('initiated redis connection %s', rConn)
     rConn.ping()
     app.logger.info('Connected to redis')
@@ -411,4 +421,4 @@ def hello_world(name=None):
 if __name__ == '__main__':
 
     insertData() #initialize the database with some baseline
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=cartport)
