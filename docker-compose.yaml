@@ -1,9 +1,9 @@
 version: '2'
 
 services:
-    service:
+    cart:
        image: acmeshop-cart:latest
-       hostname: cartservice
+       hostname: cart
        restart: always
        ports:
           - '5000:5000'
@@ -12,9 +12,9 @@ services:
        cap_add:
            - NET_BIND_SERVICE
        read_only: true
-    redis:
+    reddb:
        image: redis:5.0.3-alpine
-       hostname: cartredis
+       hostname: reddb
        restart: always
        cap_drop:
            - all
