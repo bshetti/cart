@@ -5,7 +5,6 @@ ADD . /app
 
 ENV REDIS_HOST="localhost"
 ENV REDIS_PORT="6379"
-ENV REDIS_PASSWORD=""
 
 
 RUN apk update && \
@@ -33,6 +32,7 @@ RUN ln -s /usr/local/bin/docker-entrypoint.sh /app # backwards compat
 
 COPY ./requirements.txt /app/requirements.txt
 RUN pip3 install -r requirements.txt
+EXPOSE 80
 EXPOSE 5000
 ENTRYPOINT ["docker-entrypoint.sh"]
 #CMD ["python3", "cart.py"]
