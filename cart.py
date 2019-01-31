@@ -76,9 +76,9 @@ if environ.get('CART_PORT') is not None:
     if os.environ['CART_PORT'] != "":
         cartport=os.environ['CART_PORT']
     else:
-        cartport= None
+        cartport=5000
 else:
-    cartport= None
+    cartport=5000
 
 #initializing redis connections on localhost and port 6379
 #If error terminates process- entire cart is shut down
