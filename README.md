@@ -27,10 +27,12 @@ docker run -p 5000:5000 acmeshop-cart
 ## api is as follows:
 
 **/cart/items/\<userid\>, methods=['GET']**<br>
+
    Get the list of items for a user's cart<br>
 
 
 **/cart/items/\<userid\>, methods=['GET']**<br>
+
    Get all the carts for the shop that are in progress<br>
 
 
@@ -38,11 +40,14 @@ docker run -p 5000:5000 acmeshop-cart
 
 
 **/cart/item/\<userid\>, methods=['GET', 'POST']**<br>
+
   Insert an item(s) or create a cart with a specific item(s) for a user<br>
 
 
 **/cart/clear/\<userid\>, methods=['GET', 'POST']**<br>
+
   Clear cart for specific user <br>
 
 **/cart/total/<userid>, methods=['GET', 'POST']**<br>
+
   Get total from the cart
