@@ -12,7 +12,6 @@ from lib.tracing import init_tracer
 import opentracing
 from opentracing.ext import tags
 from opentracing.propagation import Format
-#from flask_opentracing import FlaskTracing
 
 #from opentracing_instrumentation.request_context import get_current_span, span_in_context
 

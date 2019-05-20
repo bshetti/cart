@@ -20,3 +20,4 @@ tornado==4.5.3
 urllib3==1.25.2
 Werkzeug==0.15.4
 wrapt==1.11.1
+statsd==3.3.0

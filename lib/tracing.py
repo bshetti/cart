@@ -1,3 +1,5 @@
+#tracing call for Jaeger
+#initializing the jaeger tracer
 import logging
 from jaeger_client import Config
 
