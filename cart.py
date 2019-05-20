@@ -6,6 +6,17 @@ import pickle
 import os
 import random
 import sys
+import time
+
+from lib.tracing import init_tracer
+import opentracing
+from opentracing.ext import tags
+from opentracing.propagation import Format
+#from flask_opentracing import FlaskTracing
+
+#from opentracing_instrumentation.request_context import get_current_span, span_in_context
+
+
 
 #Logging initialization
 import logging
@@ -42,8 +53,13 @@ from requests.auth import HTTPBasicAuth
 
 #initializing flask
 from flask import Flask, render_template, jsonify, flash, request
+from flask import request
 app = Flask(__name__)
 app.debug=True
+
+cart_tracer = init_tracer('cart')
+#flask_tracer = FlaskTracing(opentracing_tracer, True, app)
+
 
 # set variables with env variables
 from os import environ
@@ -165,15 +181,22 @@ def is_number(s):
 @app.route('/cart/items/<userid>', methods=['GET'])
 def getCartItems(userid):
 
-    app.logger.info('getting all items on cart')
-    PPTable = getitems(userid)
-    if PPTable:
-        packed_data=jsonify({"userid":userid, "cart":PPTable})
-    else:
-        app.logger.info('no items in cart found for %s', userid)
-        output_message="no cart found for "+userid
 
-        raise FoundIssue(str(output_message), status_code=204)
+    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+
+    functionName='/cart/items/'
+
+    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+        span.set_tag("service", "cart")
+        span.set_tag("call", functionName+userid)
+        app.logger.info('getting all items on cart')
+        PPTable = getitems(userid)
+        if PPTable:
+            packed_data=jsonify({"userid":userid, "cart":PPTable})
+        else:
+            app.logger.info('no items in cart found for %s', userid)
+            output_message="no cart found for "+userid
+            raise FoundIssue(str(output_message), status_code=204)
 #        return ({'message':str(output_message)},204)
 
     return packed_data
@@ -182,28 +205,33 @@ def getCartItems(userid):
 @app.route('/cart/items/total/<userid>', methods=['GET', 'POST'])
 def cartItemsTotal(userid):
 
-    app.logger.info('getting total for %s cart',userid)
+    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
 
-    jsonobj=getitems(userid)
+    functionName='/cart/items/total/'
 
-    keylist=[]
-    for item in jsonobj:
-        keylist.append(list(item.keys())[0])
+    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+        span.set_tag("service", "cart")
+        span.set_tag("call", functionName+userid)
+        app.logger.info('getting total for %s cart',userid)
+        jsonobj=getitems(userid)
 
-    keyindex=0
-    total=0
+        keylist=[]
+        for item in jsonobj:
+            keylist.append(list(item.keys())[0])
 
-    while keyindex < len(jsonobj):
-        quantity=jsonobj[keyindex]['quantity']
-        if is_number(quantity):
-            total=total+float(quantity)
-        else:
-            total=total+0
-        keyindex += 1
+        keyindex=0
+        total=0
 
-    app.logger.info("The total number of items is %s", str(total))
+        while keyindex < len(jsonobj):
+            quantity=jsonobj[keyindex]['quantity']
+            if is_number(quantity):
+                total=total+float(quantity)
+            else:
+                total=total+0
+            keyindex += 1
 
-    totaljson={"userid":userid, "cartitemtotal":total}
+        app.logger.info("The total number of items is %s", str(total))
+        totaljson={"userid":userid, "cartitemtotal":total}
 
     return jsonify(totaljson)
 
@@ -212,17 +240,28 @@ def cartItemsTotal(userid):
 #@statsd.timer('getAllCarts')
 @app.route('/cart/all', methods=['GET'])
 def getAllCarts():
-    app.logger.info('getting carts')
 
-    carts=[]
-    cart={}
 
-    for x in rConn.keys():
-        cleankey=x.decode('utf-8')
-        cart['id']=cleankey
-        cart['cart']=json.loads(rConn.get(cleankey).decode('utf-8'))
-        carts.append(cart)
+    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+
+    functionName='/cart/all/'
+
+    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+        span.set_tag("service", "cart")
+        span.set_tag("call", functionName)
+
+
+        app.logger.info('getting carts')
+
+        carts=[]
         cart={}
+
+        for x in rConn.keys():
+            cleankey=x.decode('utf-8')
+            cart['id']=cleankey
+            cart['cart']=json.loads(rConn.get(cleankey).decode('utf-8'))
+            carts.append(cart)
+            cart={}
 
     return jsonify({'all carts': carts})
 
@@ -232,44 +271,54 @@ def getAllCarts():
 #@statsd.timer('addItem')
 @app.route('/cart/item/add/<userid>', methods=['GET', 'POST'])
 def addItem(userid):
-    content = request.json
 
-    app.logger.info('the content to add is %s', content)
+    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
 
+    functionName='/cart/items/add/'
 
-    jsonobj=getitems(userid)
+    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+        span.set_tag("service", "cart")
+        span.set_tag("call", functionName+userid)
 
-    if (jsonobj):
-        keyindex = 0
-        while keyindex < len(jsonobj):
-            if (jsonobj[keyindex]['itemid'] == content['itemid']):
-                jsonobj[keyindex]['quantity'] = int(jsonobj[keyindex]['quantity']) + int(content['quantity'])
-                keyindex=len(jsonobj)+1
+        content = request.json
+
+        app.logger.info('the content to add is %s', content)
+
+        jsonobj=getitems(userid)
+
+        if (jsonobj):
+
+            keyindex = 0
+            while keyindex < len(jsonobj):
+                if (jsonobj[keyindex]['itemid'] == content['itemid']):
+                    jsonobj[keyindex]['quantity'] = int(jsonobj[keyindex]['quantity']) + int(content['quantity'])
+                    keyindex=len(jsonobj)+1
+                    payload=json.dumps(jsonobj)
+                    try:
+                        app.logger.info('inserting cart for %s with following contents %s',userid, json.dumps(content))
+                        rConn.set(userid, payload)
+                    except Exception as e:
+                        app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
+                else:
+                    keyindex += 1
+
+            if keyindex <= len(jsonobj):
+                jsonobj.append(content)
                 payload=json.dumps(jsonobj)
                 try:
                     app.logger.info('inserting cart for %s with following contents %s',userid, json.dumps(content))
                     rConn.set(userid, payload)
                 except Exception as e:
                     app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
-            else:
-                keyindex += 1
 
-        if keyindex <= len(jsonobj):
-            jsonobj.append(content)
-            payload=json.dumps(jsonobj)
+        else:
+            payload=[]
+            payload.append(content)
+            app.logger.info("added to payload for new insert %s", json.dumps(payload))
             try:
-                app.logger.info('inserting cart for %s with following contents %s',userid, json.dumps(content))
-                rConn.set(userid, payload)
+                rConn.set(userid, json.dumps(payload))
             except Exception as e:
                 app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
-    else:
-        payload=[]
-        payload.append(content)
-        app.logger.info("added to payload for new insert %s", json.dumps(payload))
-        try:
-            rConn.set(userid, json.dumps(payload))
-        except Exception as e:
-            app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
 
     return jsonify({"userid":userid})
 
@@ -298,22 +347,32 @@ def addItem(userid):
 
 @app.route('/cart/modify/<userid>', methods=['GET', 'POST'])
 def replaceCart(userid):
-    content = request.json
-
-    app.logger.info('the content to modify is %s', content)
 
 
-    jsonobj=getitems(userid)
+    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
 
-    payload=[]
-    for item in content['cart']:
-        payload.append(item)
+    functionName='/cart/modify/'
 
-    app.logger.info("added to payload for new insert %s", json.dumps(payload))
-    try:
-        rConn.set(userid, json.dumps(payload))
-    except Exception as e:
-        app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
+    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+        span.set_tag("service", "cart")
+        span.set_tag("call", functionName+userid)
+
+        content = request.json
+
+        app.logger.info('the content to modify is %s', content)
+
+
+        jsonobj=getitems(userid)
+
+        payload=[]
+        for item in content['cart']:
+            payload.append(item)
+
+        app.logger.info("added to payload for new insert %s", json.dumps(payload))
+        try:
+            rConn.set(userid, json.dumps(payload))
+        except Exception as e:
+            app.logger.error('Could not insert data %s into redis, error is %s', json.dumps(content), e)
 
     return jsonify({"userid":userid})
 
@@ -322,39 +381,48 @@ def replaceCart(userid):
 #minimum content must be {"itemid":"shjhjssr", "quantity":"x"}
 @app.route('/cart/item/modify/<userid>', methods=['GET', 'POST'])
 def deleteItem(userid):
-    content = request.json
 
-    app.logger.info('the item to delete is %s', content)
+    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+
+    functionName='/cart/items/modify/'
+
+    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+        span.set_tag("service", "cart")
+        span.set_tag("call", functionName+userid)
+
+        content = request.json
+
+        app.logger.info('the item to delete is %s', content)
 
 
-    jsonobj=getitems(userid)
-    if (jsonobj):
-        keyindex = 0
-        while keyindex < len(jsonobj):
-            if (jsonobj[keyindex]['itemid'] == content['itemid']) and (content['quantity']==0):
-                del jsonobj[keyindex]
-                payload=json.dumps(jsonobj)
-                try:
-                    app.logger.info('removing item for %s with following contents %s',userid, json.dumps(content))
-                    rConn.set(userid, payload)
-                except Exception as e:
-                    app.logger.error('Could not remove data %s into redis, error is %s', json.dumps(content), e)
-                keyindex=len(jsonobj)
-            elif (jsonobj[keyindex]['itemid'] == content['itemid']):
-                jsonobj[keyindex]['quantity']=content['quantity']
-                payload=json.dumps(jsonobj)
-                try:
-                    app.logger.info('modifying cart for %s with following contents %s',userid, json.dumps(content))
-                    rConn.set(userid, payload)
-                except Exception as e:
-                    app.logger.error('Could not modify cart %s into redis, error is %s', json.dumps(content), e)
-                keyindex=len(jsonobj)
-            else:
-                keyindex += 1
-    else:
-        app.logger.info('no items in cart found for %s', userid)
-        output_message="no cart found for "+userid
-        raise FoundIssue(str(output_message), status_code=204)
+        jsonobj=getitems(userid)
+        if (jsonobj):
+            keyindex = 0
+            while keyindex < len(jsonobj):
+                if (jsonobj[keyindex]['itemid'] == content['itemid']) and (content['quantity']==0):
+                    del jsonobj[keyindex]
+                    payload=json.dumps(jsonobj)
+                    try:
+                        app.logger.info('removing item for %s with following contents %s',userid, json.dumps(content))
+                        rConn.set(userid, payload)
+                    except Exception as e:
+                        app.logger.error('Could not remove data %s into redis, error is %s', json.dumps(content), e)
+                    keyindex=len(jsonobj)
+                elif (jsonobj[keyindex]['itemid'] == content['itemid']):
+                    jsonobj[keyindex]['quantity']=content['quantity']
+                    payload=json.dumps(jsonobj)
+                    try:
+                        app.logger.info('modifying cart for %s with following contents %s',userid, json.dumps(content))
+                        rConn.set(userid, payload)
+                    except Exception as e:
+                        app.logger.error('Could not modify cart %s into redis, error is %s', json.dumps(content), e)
+                        keyindex=len(jsonobj)
+                else:
+                    keyindex += 1
+        else:
+            app.logger.info('no items in cart found for %s', userid)
+            output_message="no cart found for "+userid
+            raise FoundIssue(str(output_message), status_code=204)
 
     return jsonify({"userid":userid})
 
@@ -363,13 +431,22 @@ def deleteItem(userid):
 @app.route('/cart/clear/<userid>', methods=['GET', 'POST'])
 def clearCart(userid):
 
-    try:
-        app.logger.info("clearing cart for %s", userid)
-        rConn.delete(userid)
-    except Exception as e:
-        app.logger.error('Could not delete %s cart due to %s', userid, e)
-        raise FoundIssue(str(e), status_code=500)
-#        return('',500)
+
+    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+
+    functionName='/cart/clear/'
+
+    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+        span.set_tag("service", "cart")
+        span.set_tag("call", functionName+userid)
+
+        try:
+            app.logger.info("clearing cart for %s", userid)
+            rConn.delete(userid)
+        except Exception as e:
+            app.logger.error('Could not delete %s cart due to %s', userid, e)
+            raise FoundIssue(str(e), status_code=500)
+    #        return('',500)
 
     return ('',200)
 
@@ -382,31 +459,42 @@ def order(userid):
 @app.route('/cart/total/<userid>', methods=['GET', 'POST'])
 def cartTotal(userid):
 
-    app.logger.info('getting total for %s cart',userid)
 
-    jsonobj=getitems(userid)
 
-    keylist=[]
-    for item in jsonobj:
-        keylist.append(list(item.keys())[0])
+    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
 
-    keyindex=0
-    total=0
+    functionName='/cart/total/'
 
-    while keyindex < len(jsonobj):
-        quantity=jsonobj[keyindex]['quantity']
-        price=jsonobj[keyindex]['price']
-#        quantity=jsonobj[keyindex][keylist[keyindex]]['quantity']
-#        price=jsonobj[keyindex][keylist[keyindex]]['price']
-        if is_number(quantity) and is_number(price):
-            total=total+(float(quantity)*float(price))
-        else:
-            total=total+0
-        keyindex += 1
+    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+        span.set_tag("service", "cart")
+        span.set_tag("call", functionName+userid)
 
-    app.logger.info("The total calculated is %s", str(total))
 
-    totaljson={"userid":userid, "carttotal":total}
+        app.logger.info('getting total for %s cart',userid)
+
+        jsonobj=getitems(userid)
+
+        keylist=[]
+        for item in jsonobj:
+            keylist.append(list(item.keys())[0])
+
+        keyindex=0
+        total=0
+
+        while keyindex < len(jsonobj):
+            quantity=jsonobj[keyindex]['quantity']
+            price=jsonobj[keyindex]['price']
+    #        quantity=jsonobj[keyindex][keylist[keyindex]]['quantity']
+    #        price=jsonobj[keyindex][keylist[keyindex]]['price']
+            if is_number(quantity) and is_number(price):
+                total=total+(float(quantity)*float(price))
+            else:
+                total=total+0
+            keyindex += 1
+
+        app.logger.info("The total calculated is %s", str(total))
+
+        totaljson={"userid":userid, "carttotal":total}
 
     return jsonify(totaljson)
 
@@ -422,3 +510,5 @@ if __name__ == '__main__':
 
     insertData() #initialize the database with some baseline
     app.run(host='0.0.0.0', port=cartport)
+    time.sleep(2)
+    tracoer.close()
