@@ -185,7 +185,7 @@ def getCartItems(userid):
 
     functionName='/cart/items/'
 
-    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+    with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
         app.logger.info('getting all items on cart')
@@ -208,7 +208,7 @@ def cartItemsTotal(userid):
 
     functionName='/cart/items/total/'
 
-    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+    with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
         app.logger.info('getting total for %s cart',userid)
@@ -245,7 +245,7 @@ def getAllCarts():
 
     functionName='/cart/all/'
 
-    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+    with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName)
 
@@ -275,7 +275,7 @@ def addItem(userid):
 
     functionName='/cart/items/add/'
 
-    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+    with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
 
@@ -352,7 +352,7 @@ def replaceCart(userid):
 
     functionName='/cart/modify/'
 
-    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+    with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
 
@@ -385,7 +385,7 @@ def deleteItem(userid):
 
     functionName='/cart/items/modify/'
 
-    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+    with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
 
@@ -435,7 +435,7 @@ def clearCart(userid):
 
     functionName='/cart/clear/'
 
-    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+    with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
 
@@ -464,7 +464,7 @@ def cartTotal(userid):
 
     functionName='/cart/total/'
 
-    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+    with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
 
