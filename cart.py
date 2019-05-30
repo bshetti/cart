@@ -179,12 +179,9 @@ def is_number(s):
 #@statsd.timer('getCartItems')
 @app.route('/cart/items/<userid>', methods=['GET'])
 def getCartItems(userid):
-
-
     span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
-
     functionName='/cart/items/'
-
+    returnValue = '200'
     with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
@@ -195,10 +192,9 @@ def getCartItems(userid):
         else:
             app.logger.info('no items in cart found for %s', userid)
             output_message="no cart found for "+userid
-            raise FoundIssue(str(output_message), status_code=204)
-#        return ({'message':str(output_message)},204)
-
-    return packed_data
+            packed_data=jsonify({"userid":userid, "cart":PPTable})
+            returnValue='204'
+    return (packed_data, returnValue)
 
 #gets total items in users cart
 @app.route('/cart/items/total/<userid>', methods=['GET', 'POST'])

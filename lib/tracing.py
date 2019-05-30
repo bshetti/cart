@@ -2,6 +2,7 @@
 #initializing the jaeger tracer
 import logging
 import sys
+import os
 from jaeger_client import Config
 
 from os import environ
