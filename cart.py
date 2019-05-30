@@ -409,9 +409,10 @@ def deleteItem(userid):
                     try:
                         app.logger.info('modifying cart for %s with following contents %s',userid, json.dumps(content))
                         rConn.set(userid, payload)
+                        app.logger.info('finished setting %s with following contents %s',userid, json.dumps(content))
                     except Exception as e:
                         app.logger.error('Could not modify cart %s into redis, error is %s', json.dumps(content), e)
-                        keyindex=len(jsonobj)
+                    keyindex=len(jsonobj)
                 else:
                     keyindex += 1
         else:
