@@ -1,7 +1,27 @@
 #tracing call for Jaeger
 #initializing the jaeger tracer
 import logging
+import sys
 from jaeger_client import Config
+
+from os import environ
+
+if environ.get('JAEGER_HOST') is not None:
+    if os.environ['JAEGER_HOST'] != "":
+        jaegerhost=os.environ['JAEGER_HOST']
+    else:
+        jaegerhost='localhost'
+else:
+    jaegerhost='localhost'
+
+if environ.get('JAEGER_PORT') is not None:
+    if os.environ['JAEGER_PORT'] != "":
+        jaegerport=os.environ['JAEGER_PORT']
+    else:
+        jaegerport=6832
+else:
+    jaegerport=6832
+
 
 def init_tracer(service):
     logging.getLogger('').handlers=[]
@@ -12,6 +32,10 @@ def init_tracer(service):
             'sampler':{
                 'type':'const',
                 'param':1
+            },
+            'local_agent': {
+                'reporting_host': jaegerhost,
+                'reporting_port': jaegerport,
             },
             'logging':True
         },
