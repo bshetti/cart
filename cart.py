@@ -352,7 +352,7 @@ def replaceCart(userid):
 
     functionName='/cart/modify/'
 
-    with opentracing.tracer.start_span(functionName, child_of=span_ctx ) as span:
+    with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
 
