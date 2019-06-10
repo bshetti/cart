@@ -507,4 +507,4 @@ if __name__ == '__main__':
     insertData() #initialize the database with some baseline
     app.run(host='0.0.0.0', port=cartport)
     time.sleep(2)
-    tracoer.close()
+    cart_tracer.close()

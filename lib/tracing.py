@@ -7,17 +7,17 @@ from jaeger_client import Config
 
 from os import environ
 
-if environ.get('JAEGER_HOST') is not None:
-    if os.environ['JAEGER_HOST'] != "":
-        jaegerhost=os.environ['JAEGER_HOST']
+if environ.get('TRACER_HOST') is not None:
+    if os.environ['TRACER_HOST'] != "":
+        jaegerhost=os.environ['TRACER_HOST']
     else:
         jaegerhost='localhost'
 else:
     jaegerhost='localhost'
 
-if environ.get('JAEGER_PORT') is not None:
-    if os.environ['JAEGER_PORT'] != "":
-        jaegerport=os.environ['JAEGER_PORT']
+if environ.get('TRACER_PORT') is not None:
+    if os.environ['TRACER_PORT'] != "":
+        jaegerport=os.environ['TRACER_PORT']
     else:
         jaegerport=6832
 else:

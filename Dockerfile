@@ -5,8 +5,8 @@ ADD . /app
 
 ENV REDIS_HOST="localhost"
 ENV REDIS_PORT="6379"
-ENV JAEGER_HOST="localhost"
-ENV JAEGER_PORT="6832"
+ENV TRACER_HOST="localhost"
+ENV TRACER_PORT="6832"
 
 
 RUN apk update && \
