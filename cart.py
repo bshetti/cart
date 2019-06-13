@@ -56,6 +56,8 @@ from flask import request
 app = Flask(__name__)
 app.debug=True
 
+
+
 cart_tracer = init_tracer('cart')
 #flask_tracer = FlaskTracing(opentracing_tracer, True, app)
 
@@ -99,6 +101,8 @@ else:
 #If error terminates process- entire cart is shut down
 
 import redis
+import redis_opentracing
+
 
 try:
     if redispassword is not None:
@@ -111,6 +115,8 @@ try:
 except Exception as ex:
     app.logger.error('Error for redis connection %s', ex)
     exit('Failed to connect, terminating')
+
+#redis_opentracing.init_tracing(cart_tracer)
 
 #errorhandler for specific responses
 class FoundIssue(Exception):
@@ -154,14 +160,22 @@ def insertData():
         rConn.set(x, payload)
 
 #Gets all items from a specific userid
-def getitems(userid):
+def getitems(userid, spanC):
 
-    if rConn.exists(userid):
-        unpacked_data = json.loads(rConn.get(userid).decode('utf-8'))
-        app.logger.info('got data')
-    else:
-        app.logger.info('empty - no data for key %s', userid)
-        unpacked_data = 0
+#    redis_opentracing.init_tracing(cart_tracer, trace_all_classes=False)
+
+    functionName='cart-getItems-function'
+
+    with cart_tracer.start_span(functionName, child_of=spanC ) as span:
+        app.logger.info('In get items')
+
+        with cart_tracer.start_span('redis-extract-get', child_of=span) as redis_span:
+            if rConn.exists(userid):
+                unpacked_data = json.loads(rConn.get(userid).decode('utf-8'))
+                app.logger.info('got data')
+            else:
+                app.logger.info('empty - no data for key %s', userid)
+                unpacked_data = 0
 
     return unpacked_data
 
@@ -186,7 +200,7 @@ def getCartItems(userid):
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
         app.logger.info('getting all items on cart')
-        PPTable = getitems(userid)
+        PPTable = getitems(userid, span)
         if PPTable:
             packed_data=jsonify({"userid":userid, "cart":PPTable})
         else:
@@ -208,7 +222,7 @@ def cartItemsTotal(userid):
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
         app.logger.info('getting total for %s cart',userid)
-        jsonobj=getitems(userid)
+        jsonobj=getitems(userid, span)
 
         keylist=[]
         for item in jsonobj:
@@ -279,7 +293,7 @@ def addItem(userid):
 
         app.logger.info('the content to add is %s', content)
 
-        jsonobj=getitems(userid)
+        jsonobj=getitems(userid, span)
 
         if (jsonobj):
 
@@ -357,7 +371,7 @@ def replaceCart(userid):
         app.logger.info('the content to modify is %s', content)
 
 
-        jsonobj=getitems(userid)
+        jsonobj=getitems(userid, span)
 
         payload=[]
         for item in content['cart']:
@@ -390,7 +404,7 @@ def deleteItem(userid):
         app.logger.info('the item to delete is %s', content)
 
 
-        jsonobj=getitems(userid)
+        jsonobj=getitems(userid, span)
         if (jsonobj):
             keyindex = 0
             while keyindex < len(jsonobj):
@@ -468,7 +482,7 @@ def cartTotal(userid):
 
         app.logger.info('getting total for %s cart',userid)
 
-        jsonobj=getitems(userid)
+        jsonobj=getitems(userid, span)
 
         keylist=[]
         for item in jsonobj:
@@ -508,3 +522,4 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=cartport)
     time.sleep(2)
     cart_tracer.close()
+    redis_tracer.close()

@@ -24,6 +24,7 @@ RUN apk update && \
     apk add py-redis && \
     apk add py-requests && \
     apk add redis && \
+    pip3 install redis_opentracing && \
     rm -rf /var/cache/* \
     rm -rf /root/.cache/*
 
