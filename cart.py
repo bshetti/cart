@@ -13,8 +13,6 @@ import opentracing
 from opentracing.ext import tags
 from opentracing.propagation import Format
 
-#from opentracing_instrumentation.request_context import get_current_span, span_in_context
-
 
 
 #Logging initialization
@@ -176,7 +174,7 @@ def getitems(userid, spanC):
             else:
                 app.logger.info('empty - no data for key %s', userid)
                 unpacked_data = 0
-            redis_span.finish()
+
     return unpacked_data
 
 #convert string to number
@@ -193,11 +191,15 @@ def is_number(s):
 #@statsd.timer('getCartItems')
 @app.route('/cart/items/<userid>', methods=['GET'])
 def getCartItems(userid):
-    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, carrier=request.headers)
     functionName='/cart/items/'
     returnValue = '200'
-#    app.logger.info('the derived span context from frontend is:', str(span_ctx))
-    with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
+    if span_ctx is None:
+        app.logger.info('there is no context being passed')
+    else:
+        app.logger.info('there is context being passed')
+    with cart_tracer.start_span(functionName, child_of=span_ctx) as span:
+        span.set_tag(tags.SPAN_KIND, tags.SPAN_KIND_RPC_CLIENT)
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
         app.logger.info('getting all items on cart')
@@ -209,7 +211,8 @@ def getCartItems(userid):
             output_message="no cart found for "+userid
             packed_data=jsonify({"userid":userid, "cart":PPTable})
             returnValue='204'
-        span.finish()
+
+
     return (packed_data, returnValue)
 
 #gets total items in users cart
