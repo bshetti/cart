@@ -196,6 +196,7 @@ def getCartItems(userid):
     span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
     functionName='/cart/items/'
     returnValue = '200'
+    app.logger.info('the derived span context from frontend is:', span_ctx)
     with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)

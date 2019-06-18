@@ -34,10 +34,10 @@ def init_tracer(service):
                 'type':'const',
                 'param':1
             },
-            'local_agent': {
-                'reporting_host': jaegerhost,
-                'reporting_port': jaegerport,
-            },
+#            'local_agent': {
+#                'reporting_host': jaegerhost,
+#                'reporting_port': jaegerport,
+#            },
             'logging':True
         },
         service_name=service
