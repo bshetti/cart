@@ -101,7 +101,7 @@ else:
 #If error terminates process- entire cart is shut down
 
 import redis
-import redis_opentracing
+#import redis_opentracing
 
 
 try:
@@ -176,7 +176,7 @@ def getitems(userid, spanC):
             else:
                 app.logger.info('empty - no data for key %s', userid)
                 unpacked_data = 0
-
+            redis_span.finish()
     return unpacked_data
 
 #convert string to number
@@ -196,7 +196,7 @@ def getCartItems(userid):
     span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
     functionName='/cart/items/'
     returnValue = '200'
-    app.logger.info('the derived span context from frontend is:', span_ctx)
+#    app.logger.info('the derived span context from frontend is:', str(span_ctx))
     with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
         span.set_tag("service", "cart")
         span.set_tag("call", functionName+userid)
@@ -209,6 +209,7 @@ def getCartItems(userid):
             output_message="no cart found for "+userid
             packed_data=jsonify({"userid":userid, "cart":PPTable})
             returnValue='204'
+        span.finish()
     return (packed_data, returnValue)
 
 #gets total items in users cart
