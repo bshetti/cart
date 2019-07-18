@@ -5,7 +5,7 @@ ADD . /app
 
 ENV REDIS_HOST="localhost"
 ENV REDIS_PORT="6379"
-
+ENV REDIS_PASSWORD=""
 
 RUN apk update && \
     apk add python3 && \

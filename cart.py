@@ -87,8 +87,10 @@ import redis
 
 try:
     if redispassword is not None:
+        app.logger.info('initiating redis connection with password %s', redispassword)
         rConn=redis.StrictRedis(host=redishost, port=redisport, password=redispassword, db=0)
     else:
+        app.logger.info('initiating redis connection with no password %s', redispassword)
         rConn=redis.StrictRedis(host=redishost, port=redisport, password=None, db=0)
     app.logger.info('initiated redis connection %s', rConn)
     rConn.ping()
