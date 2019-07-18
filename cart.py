@@ -104,8 +104,10 @@ import redis
 
 try:
     if redispassword is not None:
+        app.logger.info('initiating redis connection with password %s', redispassword)
         rConn=redis.StrictRedis(host=redishost, port=redisport, password=redispassword, db=0)
     else:
+        app.logger.info('initiating redis connection with no password %s', redispassword)
         rConn=redis.StrictRedis(host=redishost, port=redisport, password=None, db=0)
     app.logger.info('initiated redis connection %s', rConn)
     rConn.ping()
@@ -162,12 +164,12 @@ def getitems(userid, spanC):
 
 #    redis_opentracing.init_tracing(cart_tracer, trace_all_classes=False)
 
-    functionName='cart-getItems-function'
+    functionName='/cart/getItems/function'
 
     with cart_tracer.start_span(functionName, child_of=spanC ) as span:
-        app.logger.info('In get items')
+        app.logger.info('/cart/getItems')
 
-        with cart_tracer.start_span('redis-extract-get', child_of=span) as redis_span:
+        with cart_tracer.start_span('/redis/extract/get', child_of=span) as redis_span:
             if rConn.exists(userid):
                 unpacked_data = json.loads(rConn.get(userid).decode('utf-8'))
                 app.logger.info('got data')
@@ -191,17 +193,18 @@ def is_number(s):
 #@statsd.timer('getCartItems')
 @app.route('/cart/items/<userid>', methods=['GET'])
 def getCartItems(userid):
-    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, carrier=request.headers)
-    functionName='/cart/items/'
+    span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, carrier=request.headers)
+    app.logger.info('the request headers are %s', str(request.headers))
+    functionName='/cart/items'
     returnValue = '200'
     if span_ctx is None:
         app.logger.info('there is no context being passed')
     else:
-        app.logger.info('there is context being passed')
+        app.logger.info('there is context being passed %s', str(span_ctx))
+
     with cart_tracer.start_span(functionName, child_of=span_ctx) as span:
-        span.set_tag(tags.SPAN_KIND, tags.SPAN_KIND_RPC_CLIENT)
-        span.set_tag("service", "cart")
-        span.set_tag("call", functionName+userid)
+
+        span.set_tag("user", userid)
         app.logger.info('getting all items on cart')
         PPTable = getitems(userid, span)
         if PPTable:
@@ -212,20 +215,18 @@ def getCartItems(userid):
             packed_data=jsonify({"userid":userid, "cart":PPTable})
             returnValue='204'
 
-
     return (packed_data, returnValue)
 
 #gets total items in users cart
 @app.route('/cart/items/total/<userid>', methods=['GET', 'POST'])
 def cartItemsTotal(userid):
 
-    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+    span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, request.headers)
 
-    functionName='/cart/items/total/'
+    functionName='/cart/items/total'
 
     with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
-        span.set_tag("service", "cart")
-        span.set_tag("call", functionName+userid)
+        span.set_tag("user", userid)
         app.logger.info('getting total for %s cart',userid)
         jsonobj=getitems(userid, span)
 
@@ -256,14 +257,11 @@ def cartItemsTotal(userid):
 def getAllCarts():
 
 
-    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+    span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, request.headers)
 
-    functionName='/cart/all/'
+    functionName='cart/all'
 
     with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
-        span.set_tag("service", "cart")
-        span.set_tag("call", functionName)
-
 
         app.logger.info('getting carts')
 
@@ -286,13 +284,13 @@ def getAllCarts():
 @app.route('/cart/item/add/<userid>', methods=['GET', 'POST'])
 def addItem(userid):
 
-    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+    span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, request.headers)
 
-    functionName='/cart/items/add/'
+    functionName='/cart/items/add'
 
     with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
-        span.set_tag("service", "cart")
-        span.set_tag("call", functionName+userid)
+
+        span.set_tag("userid", userid)
 
         content = request.json
 
@@ -363,13 +361,12 @@ def addItem(userid):
 def replaceCart(userid):
 
 
-    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+    span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, request.headers)
 
-    functionName='/cart/modify/'
+    functionName='/cart/modify'
 
     with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
-        span.set_tag("service", "cart")
-        span.set_tag("call", functionName+userid)
+        span.set_tag("userid", userid)
 
         content = request.json
 
@@ -396,13 +393,12 @@ def replaceCart(userid):
 @app.route('/cart/item/modify/<userid>', methods=['GET', 'POST'])
 def deleteItem(userid):
 
-    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+    span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, request.headers)
 
-    functionName='/cart/items/modify/'
+    functionName='/cart/items/modify'
 
     with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
-        span.set_tag("service", "cart")
-        span.set_tag("call", functionName+userid)
+        span.set_tag("userid", userid)
 
         content = request.json
 
@@ -447,13 +443,12 @@ def deleteItem(userid):
 def clearCart(userid):
 
 
-    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+    span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, request.headers)
 
-    functionName='/cart/clear/'
+    functionName='/cart/clear'
 
     with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
-        span.set_tag("service", "cart")
-        span.set_tag("call", functionName+userid)
+        span.set_tag("userid", userid)
 
         try:
             app.logger.info("clearing cart for %s", userid)
@@ -476,14 +471,12 @@ def cartTotal(userid):
 
 
 
-    span_ctx = cart_tracer.extract(Format.HTTP_HEADERS, request.headers)
+    span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, request.headers)
 
-    functionName='/cart/total/'
+    functionName='carttotal'
 
     with cart_tracer.start_span(functionName, child_of=span_ctx ) as span:
-        span.set_tag("service", "cart")
-        span.set_tag("call", functionName+userid)
-
+        span.set_tag("userid", userid)
 
         app.logger.info('getting total for %s cart',userid)
 
@@ -527,4 +520,4 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=cartport)
     time.sleep(2)
     cart_tracer.close()
-    redis_tracer.close()
+#    redis_tracer.close()
