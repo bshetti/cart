@@ -2,6 +2,7 @@ FROM bitnami/python:3.7
 MAINTAINER Bill Shetti "billshetti@gmail.com"
 ENV REDIS_HOST="localhost"
 ENV REDIS_PORT="6379"
+ENV REDIS_PASSWORD=""
 
 # needed for redis-cli
 RUN install_packages redis-server
