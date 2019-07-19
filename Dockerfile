@@ -4,7 +4,7 @@ ENV REDIS_HOST="localhost"
 ENV REDIS_PORT="6379"
 ENV REDIS_PASSWORD=""
 
-# needed for redis-cli
+# needed for redis-cli ; the server is not used
 RUN install_packages redis-server
 
 COPY ./requirements.txt /app/requirements.txt
