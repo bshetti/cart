@@ -1,53 +1,292 @@
-# cart server
+# Cart
 
-This server is part of the new polygot acme fitness online store.
-This will help interact with the catalog, front-end, and make calls to the order services.
-It is meant to be run with redis.
+[![gcr.io](https://img.shields.io/badge/gcr.io-v1.2--beta-orange?style=flat-square)](https://console.cloud.google.com/gcr/images/vmwarecloudadvocacy/GLOBAL/acmeshop-cart@sha256:544372587f14bbf123897e83470fbba9284d5d274fdbdc2235655859b744cdce/details?tab=info)
 
-## pre-requirements
+> A cart service, because what is a shop without a cart to put stuff in?
 
-* Python 3.7.2
-* redis-server 5.0.3
-* python libraries in requirements.txt
+The Cart service is part of the [ACME Fitness Shop](https://github.com/vmwarecloudadvocacy/acme_fitness_demo). The goal of this specific service is to keep track of carts and items in the different carts.
 
+## Prerequisites
 
-## docker image build & run
+There are different dependencies based on whether you want to run a built container, or build a new one.
 
+### Build
+
+* [Python 3.7.2 or higher](https://www.python.org/downloads/)
+* [Pip](https://pip.pypa.io/en/stable/installing/)
+* [Docker](https://www.docker.com/docker-community)
+
+### Run
+
+* [Docker](https://www.docker.com/docker-community)
+* [Redis](https://hub.docker.com/r/bitnami/redis)
+
+## Installation
+
+### Docker
+
+Use this command to pull the latest tagged version of the shipping service:
+
+```bash
+docker pull gcr.io/vmwarecloudadvocacy/acmeshop-cart:1.2-beta
 ```
-git clone directory
-docker build -t acmeshop-cart .
+
+To build a docker container, run `docker build . -t vmwarecloudadvocacy/acmeshop-cart:<tag>`.
+
+The images are tagged with:
+
+* `<Major>.<Minor>.<Bug>`, for example `1.1.0`
+* `stable`: denotes the currently recommended image appropriate for most situations
+* `latest`: denotes the most recently pushed image. It may not be appropriate for all use cases
+
+### Source
+
+To build the app as a stand-alone executable, run `pip install -r requirements.txt` to install the Python libraries and run `python3 cart.py` after.
+
+## Usage
+
+The **cart** service, either running inside a Docker container or as a stand-alone app, relies on the below environment variables:
+
+* **REDIS_HOST**: The hostname or IP address to connect to the Redis server (defaults to `localhost`)
+* **REDIS_PORT**: The port to connect to the Redis server (defaults to `6379`)
+* **REDIS_PASSWORD**: The password to connect to Redis (defaults to `blank`)
+* **CART_PORT**: The port number the cart service will listen to requests (defaults to `5000`)
+
+The Docker image is based on the Bitnami Python container. Use this commands to run the latest stable version of the payment service with all available parameters:
+
+```bash
+# Run the Redis container
+docker run --rm -it -p 6379:6379 redis:5.0.3-alpine
+
+# Run the user service
+docker run --rm -it -e REDIS_HOST=localhost -e REDIS_PORT=6379 -e REDIS_PASSWORD=myAwesomePassword -e CART_PORT=5000 -p 5000:5000 gcr.io/vmwarecloudadvocacy/acmeshop-cart:1.2-beta
 ```
 
-Ensure redis is installed and running locally on port 6379
+## API
 
+### HTTP
+
+#### `GET /cart/total/<userid>`
+
+Get total amount in users cart
+
+```bash
+curl --request GET \
+  --url http://localhost:5000/cart/total/dan
 ```
-docker run -p 5000:5000 acmeshop-cart
+
+```json
+{
+  "carttotal": 804.5,
+  "userid": "dan"
+}
 ```
 
-## api is as follows:
+#### `POST /cart/item/modify/<userid>`
 
-**/cart/items/\<userid\>, methods=['GET']**<br>
+Update an item in the cart of a user
 
-   Get the list of items for a user's cart<br>
+```bash
+curl --request POST \
+  --url http://localhost:5000/cart/item/modify/dan \
+  --header 'content-type: application/json' \
+  --data '{"itemid":"sfsdsda3343", "quantity":2}'
+```
 
+To modify the item in a cart, the input needs to contain an `itemid` and the new `quantity`
 
-**/cart/items/\<userid\>, methods=['GET']**<br>
+```json
+{"itemid":"sfsdsda3343", "quantity":2}
+```
 
-   Get all the carts for the shop that are in progress<br>
+A successful update will return the userid
 
+```json
+{
+  "userid": "dan"
+}
+```
 
-**/cart/all, methods=['GET']**<br>
+#### `POST /cart/modify/<userid>`
 
+Modify the contents of a cart
 
-**/cart/item/\<userid\>, methods=['GET', 'POST']**<br>
+```bash
+curl --request POST \
+  --url http://localhost:5000/cart/modify/dan \
+  --header 'content-type: application/json' \
+  --data '{
+  "cart": [
+    {
+      "description": "fitband for any age - even babies",
+      "itemid": "sdfsdfsfs",
+      "name": "fitband",
+      "price": 4.5,
+      "quantity": 1
+    },
+    {
+      "description": "the most awesome redpants in the world",
+      "itemid": "sfsdsda3343",
+      "name": "redpant",
+      "price": 400,
+      "quantity": 1
+    }
+  ],
+  "userid": "dan"
+}'
+```
 
-  Insert an item(s) or create a cart with a specific item(s) for a user<br>
+To replace the entire cart, or create a new cart for a user, send a cart object
 
+```json
+{
+  "cart": [
+    {
+      "description": "fitband for any age - even babies",
+      "itemid": "sdfsdfsfs",
+      "name": "fitband",
+      "price": 4.5,
+      "quantity": 1
+    }
+  ],
+  "userid": "dan"
+}
+```
 
-**/cart/clear/\<userid\>, methods=['GET', 'POST']**<br>
+A successful update will return the userid
 
-  Clear cart for specific user <br>
+```json
+{
+  "userid": "dan"
+}
+```
 
-**/cart/total/<userid>, methods=['GET', 'POST']**<br>
+#### `POST /cart/item/add/<userid>`
 
-  Get total from the cart
+Add item to cart
+
+```bash
+curl --request POST \
+  --url http://localhost:5000/cart/item/add/shri \
+  --header 'content-type: application/json' \
+  --data '{"itemid":"xyz", "quantity":3}'
+```
+
+To add the item in a cart, the input needs to contain an `itemid` and the `quantity`
+
+```json
+{"itemid":"xyz", "quantity":3}
+```
+
+A successful update will return the userid
+
+```json
+{
+  "userid": "shri"
+}
+```
+
+#### `GET /cart/items/total/<userid>`
+
+Get the total number of items in a cart
+
+```bash
+curl --request GET \
+  --url http://localhost:5000/cart/items/total/shri
+```
+
+```json
+{
+  "cartitemtotal": 5.0,
+  "userid": "shri"
+}
+```
+
+#### `GET /cart/clear/<userid>`
+
+Clear all items from the cart
+
+```bash
+curl --request GET \
+  --url http://localhost:5000/cart/clear/dan
+```
+
+```text
+<no payload returned>
+```
+
+#### `GET /cart/items/<userid>`
+
+Get all items in a cart
+
+```bash
+curl --request GET \
+  --url http://localhost:5000/cart/items/dan
+```
+
+```json
+{
+  "cart": [
+    {
+      "description": "fitband for any age - even babies",
+      "itemid": "sdfsdfsfs",
+      "name": "fitband",
+      "price": 4.5,
+      "quantity": 1
+    },
+    {
+      "description": "the most awesome redpants in the world",
+      "itemid": "sfsdsda3343",
+      "name": "redpant",
+      "price": 400,
+      "quantity": 1
+    }
+  ],
+  "userid": "dan"
+}
+```
+
+#### `GET /cart/all`
+
+Get all the carts
+
+```bash
+curl --request GET \
+  --url http://localhost:5000/cart/all
+```
+
+```json
+{
+  "all carts": [
+    {
+      "cart": [
+        {
+          "description": "fitband for any age - even babies",
+          "itemid": "sdfsdfsfs",
+          "name": "fitband",
+          "price": 4.5,
+          "quantity": 1
+        },
+        {
+          "description": "the most awesome redpants in the world",
+          "itemid": "sfsdsda3343",
+          "name": "redpant",
+          "price": 400,
+          "quantity": 1
+        }
+      ],
+      "id": "shri"
+    }
+  ]
+}
+```
+
+## Contributing
+
+[Pull requests](https://github.com/vmwarecloudadvocacy/order/pulls) are welcome. For major changes, please open [an issue](https://github.com/vmwarecloudadvocacy/order/issues) first to discuss what you would like to change.
+
+Please make sure to update tests as appropriate.
+
+## License
+
+See the [LICENSE](./LICENSE) file in the repository
