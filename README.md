@@ -1,6 +1,6 @@
 # Cart
 
-[![gcr.io](https://img.shields.io/badge/gcr.io-v1.2--beta-orange?style=flat-square)](https://console.cloud.google.com/gcr/images/vmwarecloudadvocacy/GLOBAL/acmeshop-cart@sha256:544372587f14bbf123897e83470fbba9284d5d274fdbdc2235655859b744cdce/details?tab=info)
+[![gcr.io](https://img.shields.io/badge/gcr.io-stable-orange?style=flat-square)](https://console.cloud.google.com/gcr/images/vmwarecloudadvocacy/GLOBAL/acmeshop-cart@sha256:96ca8cf4f2c538883c754dbacf488966b2113b904c0291a0b99c2c53f51a9233/details?tab=info)
 
 > A cart service, because what is a shop without a cart to put stuff in?
 
