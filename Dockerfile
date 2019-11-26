@@ -6,6 +6,11 @@ ADD . /app
 ENV REDIS_HOST="localhost"
 ENV REDIS_PORT="6379"
 ENV REDIS_PASSWORD=""
+ENV TRACER_HOST="localhost"
+ENV TRACER_PORT="6832"
+ENV JAEGER_HOST_AGENT="localhost"
+ENV JAEGER_HOST_PORT="6832"
+
 
 RUN apk update && \
     apk add python3 && \
@@ -22,6 +27,7 @@ RUN apk update && \
     apk add py-redis && \
     apk add py-requests && \
     apk add redis && \
+#    pip3 install redis_opentracing && \
     rm -rf /var/cache/* \
     rm -rf /root/.cache/*
 
