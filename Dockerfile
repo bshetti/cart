@@ -11,6 +11,7 @@ ENV TRACER_PORT="6832"
 ENV JAEGER_HOST_AGENT="localhost"
 ENV JAEGER_HOST_PORT="6832"
 
+
 RUN apk update && \
     apk add python3 && \
     apk add python3-dev && \
