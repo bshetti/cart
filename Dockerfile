@@ -4,6 +4,11 @@ ENV REDIS_HOST="localhost"
 ENV REDIS_PORT="6379"
 ENV REDIS_PASSWORD=""
 
+ENV TRACER_HOST="localhost"
+ENV TRACER_PORT="6832"
+ENV JAEGER_HOST_AGENT="localhost"
+ENV JAEGER_HOST_PORT="6832"
+
 # needed for redis-cli ; the server is not used
 RUN install_packages redis-server
 
