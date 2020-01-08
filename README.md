@@ -56,10 +56,10 @@ The Docker image is based on the Bitnami Python container. Use this commands to 
 
 ```bash
 # Run the Redis container
-docker run --rm -it -p 6379:6379 redis:5.0.3-alpine
+docker run -p 6379:6379 bitnami/redis:latest
 
-# Run the user service
-docker run --rm -it -e REDIS_HOST=localhost -e REDIS_PORT=6379 -e REDIS_PASSWORD=myAwesomePassword -e CART_PORT=5000 -p 5000:5000 gcr.io/vmwarecloudadvocacy/acmeshop-cart:1.2-beta
+# Run the cart service
+docker run --rm -it -e REDIS_HOST=localhost -e REDIS_PORT=6379 -e REDIS_PASSWORD=myAwesomePassword -e CART_PORT=5000 -p 5000:5000 gcr.io/vmwarecloudadvocacy/acmeshop-cart:stable
 ```
 
 ## API
