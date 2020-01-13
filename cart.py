@@ -7,13 +7,14 @@ import os
 import random
 import sys
 import time
+import requests
 
 from lib.tracing import init_tracer
 import opentracing
 from opentracing.ext import tags
 from opentracing.propagation import Format
-
-
+import sentry_sdk
+#sentry_sdk.init("https://c0f58a327f2c4cd8b29e8cd0a606f0e9@sentry.io/1722363")
 
 #Logging initialization
 import logging
@@ -50,10 +51,18 @@ from requests.auth import HTTPBasicAuth
 
 #initializing flask
 from flask import Flask, render_template, jsonify, flash, request
-from flask import request
+from flask import g,request
+from flask_httpauth import HTTPTokenAuth
+from sentry_sdk.integrations.flask import FlaskIntegration
+
 app = Flask(__name__)
 app.debug=True
+auth = HTTPTokenAuth('Bearer')
 
+sentry_sdk.init(
+    dsn="https://c0f58a327f2c4cd8b29e8cd0a606f0e9@sentry.io/1722363",
+    integrations=[FlaskIntegration()]
+)
 
 
 cart_tracer = init_tracer('cart')
@@ -75,9 +84,9 @@ if environ.get('REDIS_PORT') is not None:
     if os.environ['REDIS_PORT'] != "":
         redisport=os.environ['REDIS_PORT']
     else:
-        redisport=6379
+        redisport=6380
 else:
-    redisport=6379
+    redisport=6380
 
 if environ.get('REDIS_PASSWORD') is not None:
     if os.environ['REDIS_PASSWORD'] != "":
@@ -94,6 +103,31 @@ if environ.get('CART_PORT') is not None:
         cartport=5000
 else:
     cartport=5000
+
+if environ.get('USER_HOST') is not None:
+    if os.environ['USER_HOST'] != "":
+        userhost=os.environ['USER_HOST']
+    else:
+        userhost='localhost'
+else:
+    userhost='localhost'
+
+if environ.get('USER_PORT') is not None:
+    if os.environ['USER_PORT'] != "":
+        userport=int(os.environ['USER_PORT'])
+    else:
+        userport=8081
+else:
+    userport=8081
+
+if environ.get('AUTH_MODE') is not None:
+    if os.environ['AUTH_MODE'] != "":
+        authmode=int(os.environ['AUTH_MODE'])
+        print("user service is ", authmode)
+    else:
+        authmode=1
+else:
+    authmode=1
 
 #initializing redis connections on localhost and port 6379
 #If error terminates process- entire cart is shut down
@@ -133,6 +167,70 @@ class FoundIssue(Exception):
         rv = dict(self.payload or ())
         rv['message'] = self.message
         return rv
+
+
+@auth.verify_token
+def verify_token(token):
+
+    global authmode
+
+    headers={'content-type':'application/json'}
+    verify_token_url="http://"+userhost+":"+str(userport)+"/verify-token"
+    login_url="http://"+userhost+":"+str(userport)+"/login"
+
+    app.logger.info("user service mode in verify_token is %s", authmode)
+    if authmode == 2:
+        print("using local version of user for test - getting token")
+
+        data1=json.dumps({"username":"eric", "password":"vmware1!"})
+
+        r=requests.post(login_url, headers=headers, data=data1)
+
+        if r.status_code == 200:
+            verify_token_payload=json.dumps({"access_token": json.loads(r.content)["access_token"]})
+            r=requests.post(verify_token_url, headers=headers, data=verify_token_payload)
+            if r.status_code == 200:
+                app.logger.info('Authorized %s', json.loads(r.content)["message"])
+                return True
+            else:
+                app.logger.info('Un-authorized %s', json.loads(r.content)["message"])
+                return False
+        else:
+            app.logger.info('Bad user or password %s', json.loads(r.content)["message"])
+            return False
+
+    elif authmode == 1:
+        if token == "":
+            app.logger.info("No Bearer token sent")
+            return False
+        else:
+            verify_token_payload=json.dumps({"access_token": token})
+            r=requests.post(verify_token_url, headers=headers, data=verify_token_payload)
+            if r.status_code == 200:
+                app.logger.info('Authorized %s', json.loads(r.content)["message"])
+                return True
+            else:
+                app.logger.info('Un-authorized %s', json.loads(r.content)["message"])
+                return False
+
+    else:
+        return True
+
+    return False
+
+#    if token == '':
+#        app.logger.info('No Authorization Token available or in wrong format')
+#        return False
+#    else:
+#        token="eyJhbGciOiJIUzI1NiIsImtpZCI6InNpZ25pbl8xIiwidHlwIjoiSldUIn0.eyJVc2VybmFtZSI6ImVyaWMiLCJleHAiOjE1Nzg5NDM4NjIsInN1YiI6IjVlMWNiZGM3ZjNkNDkzNmYxMDY0NTZhZiJ9.-RfrYegtYWsF_Y0yzXlBri1PetwNAmAxOt_1WcFhq8M"
+#        url="http://localhost:8081/verify-token"
+#        data=json.dumps('access_token':token)
+#        print("Token is:", token)
+#        return True
+
+#    return False
+
+
 
 @app.errorhandler(FoundIssue)
 def handle_invalid_usage(error):
@@ -192,20 +290,21 @@ def is_number(s):
 
 #@statsd.timer('getCartItems')
 @app.route('/cart/items/<userid>', methods=['GET'])
+@auth.login_required
 def getCartItems(userid):
     span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, carrier=request.headers)
     app.logger.info('the request headers are %s', str(request.headers))
     functionName='/cart/items'
     returnValue = '200'
     if span_ctx is None:
-        app.logger.info('there is no context being passed')
+        app.logger.info('there is no context being passed for tracing or tracing if off')
     else:
         app.logger.info('there is context being passed %s', str(span_ctx))
 
     with cart_tracer.start_span(functionName, child_of=span_ctx) as span:
 
         span.set_tag("user", userid)
-        app.logger.info('getting all items on cart')
+        app.logger.info('getting all items on cart for user %s', userid)
         PPTable = getitems(userid, span)
         if PPTable:
             packed_data=jsonify({"userid":userid, "cart":PPTable})
@@ -219,6 +318,7 @@ def getCartItems(userid):
 
 #gets total items in users cart
 @app.route('/cart/items/total/<userid>', methods=['GET', 'POST'])
+@auth.login_required
 def cartItemsTotal(userid):
 
     span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, request.headers)
@@ -254,6 +354,7 @@ def cartItemsTotal(userid):
 #http call to get all carts and their values
 #@statsd.timer('getAllCarts')
 @app.route('/cart/all', methods=['GET'])
+@auth.login_required
 def getAllCarts():
 
 
@@ -282,6 +383,7 @@ def getAllCarts():
 #If add is positive returns the userid
 #@statsd.timer('addItem')
 @app.route('/cart/item/add/<userid>', methods=['GET', 'POST'])
+@auth.login_required
 def addItem(userid):
 
     span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, request.headers)
@@ -358,6 +460,7 @@ def addItem(userid):
 
 
 @app.route('/cart/modify/<userid>', methods=['GET', 'POST'])
+@auth.login_required
 def replaceCart(userid):
 
 
@@ -391,6 +494,7 @@ def replaceCart(userid):
 #clear item from cart
 #minimum content must be {"itemid":"shjhjssr", "quantity":"x"}
 @app.route('/cart/item/modify/<userid>', methods=['GET', 'POST'])
+@auth.login_required
 def deleteItem(userid):
 
     span_ctx = cart_tracer.extract(opentracing.Format.HTTP_HEADERS, request.headers)
@@ -440,6 +544,7 @@ def deleteItem(userid):
 
 #clear cart
 @app.route('/cart/clear/<userid>', methods=['GET', 'POST'])
+@auth.login_required
 def clearCart(userid):
 
 
@@ -467,6 +572,7 @@ def order(userid):
 
 #get total amount in users cart
 @app.route('/cart/total/<userid>', methods=['GET', 'POST'])
+@auth.login_required
 def cartTotal(userid):
 
 
@@ -510,6 +616,7 @@ def cartTotal(userid):
 
 #baseline route to check is server is live ;-)
 @app.route('/')
+@auth.login_required
 def hello_world(name=None):
 	return render_template('hello.html')
 
